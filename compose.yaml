@@ -1,4 +1,18 @@
-FROM ubuntu:latest
-LABEL authors="sid vicious"
+version: "3.9"
 
-ENTRYPOINT ["top", "-b"]
+services:
+  postgres:
+    image: postgres:16
+    container_name: expense-tracker
+    restart: always
+    environment:
+      POSTGRES_DB: expense-tracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5532:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

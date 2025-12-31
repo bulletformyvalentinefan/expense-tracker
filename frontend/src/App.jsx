@@ -11,11 +11,18 @@ function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false)
     const [userData, setUserData] = useState(null)
 
+    const handleLogout = () => {
+        setUserData(null);
+        setIsLoggedIn(false);
+        axios.defaults.auth = null;
+    }
+
     const handleRegister = async (e) => {
         e.preventDefault();
         try {
             const newUser = { name, email, password };
             await axios.post('/api/auth/register', newUser);
+            alert("Account created successfully. Please log in.");
             setIsRegistering(false);
         } catch (error) {
             console.error("Registration error:", error);
@@ -43,7 +50,7 @@ function App() {
         }
     }
 
-    if (isLoggedIn) return <Dashboard user={userData} />;
+    if (isLoggedIn) return <Dashboard user={userData} onLogout={handleLogout} />;
 
     return (
         <div className="auth-container">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const Dashboard = ({ user }) => {
+const Dashboard = ({ user, onLogout }) => {
     const [expenses, setExpenses] = useState([]);
     const [categories, setCategories] = useState([]);
     const [usersList, setUsersList] = useState([]);
@@ -65,7 +65,9 @@ const Dashboard = ({ user }) => {
             try {
                 await axios.delete(`/api/users/${user.id}`);
                 notify("ACCOUNT_TERMINATED", "error");
-                setTimeout(() => window.location.reload(), 2000);
+                setTimeout(() => {
+                    onLogout();
+                }, 2000);
             } catch (error) {
                 notify("TERMINATION_FAILED", "error");
             }
@@ -94,6 +96,7 @@ const Dashboard = ({ user }) => {
                         <p style={styles.userSub}>AUTH_USER: <span style={{color: '#fff'}}>{user?.name?.toUpperCase()}</span></p>
                     </div>
                     <div style={{display: 'flex', gap: '10px'}}>
+                        <button onClick={onLogout} style={styles.refreshBtn}>LOGOUT</button>
                         <button onClick={handleSelfDelete} style={styles.terminateBtn}>TERMINATE_ACCOUNT</button>
                         <button onClick={fetchData} style={styles.refreshBtn}>RELOAD_SYSTEM</button>
                     </div>
@@ -191,27 +194,27 @@ const styles = {
     popup: { position: 'fixed', top: '20px', right: '20px', background: '#0a0a0a', border: '1px solid #1a1a1a', padding: '15px 25px', fontSize: '0.65rem', letterSpacing: '2px', zIndex: 1000, borderRadius: '4px' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '60px' },
     brand: { fontSize: '1.2rem', fontWeight: '900', letterSpacing: '6px', margin: 0 },
-    userSub: { fontSize: '0.6rem', color: '#444', marginTop: '8px', letterSpacing: '1px' },
-    terminateBtn: { background: 'transparent', border: '1px solid #411', color: '#611', padding: '8px 15px', fontSize: '0.55rem', cursor: 'pointer', borderRadius: '4px' },
+    userSub: { fontSize: '0.6rem', color: '#888', marginTop: '8px', letterSpacing: '1px' },
+    terminateBtn: { background: 'transparent', border: '1px solid #ff4d4d', color: '#ff4d4d', padding: '8px 15px', fontSize: '0.55rem', cursor: 'pointer', borderRadius: '4px' },
     refreshBtn: { background: 'transparent', border: '1px solid #222', color: '#888', padding: '8px 15px', fontSize: '0.55rem', cursor: 'pointer', borderRadius: '4px' },
     usersPanel: { marginBottom: '30px', padding: '20px', border: '1px solid #111', borderRadius: '8px' },
     userGrid: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' },
-    userTag: { fontSize: '0.55rem', color: '#666', border: '1px solid #222', padding: '4px 8px', borderRadius: '3px' },
+    userTag: { fontSize: '0.55rem', color: '#eee', border: '1px solid #444', padding: '4px 8px', borderRadius: '3px' },
     actionPanel: { background: '#080808', padding: '40px', borderRadius: '12px', border: '1px solid #111', marginBottom: '50px' },
     form: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '20px', alignItems: 'end' },
     inputGroup: { display: 'flex', flexDirection: 'column', gap: '10px' },
-    fieldLabel: { fontSize: '0.55rem', color: '#333', fontWeight: 'bold', letterSpacing: '1.5px' },
+    fieldLabel: { fontSize: '0.55rem', color: '#aaa', fontWeight: 'bold', letterSpacing: '1.5px' },
     darkInput: { background: 'transparent', border: 'none', borderBottom: '1px solid #333', color: '#fff', padding: '10px 0', outline: 'none' },
-    darkSelect: { background: '#000', border: 'none', borderBottom: '1px solid #333', color: '#fff', padding: '10px 0', outline: 'none' },
+    darkSelect: { background: '#000', border: 'none', borderBottom: '1px solid #333', color: '#fff', padding: '10px 0', outline: 'none', width: '100%' },
     addBtn: { background: '#fff', color: '#000', border: 'none', height: '48px', fontSize: '0.65rem', fontWeight: '900', cursor: 'pointer', borderRadius: '6px' },
     summaryRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px', borderBottom: '1px solid #111', paddingBottom: '20px' },
     totalVal: { fontSize: '2.2rem', margin: 0, fontWeight: '200', letterSpacing: '-1px' },
     listContainer: { display: 'flex', flexDirection: 'column', gap: '15px' },
     expenseCard: { background: '#080808', padding: '25px', borderRadius: '10px', border: '1px solid #111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
     cardDesc: { fontSize: '0.85rem', margin: 0, fontWeight: '500', letterSpacing: '0.5px' },
-    cardCat: { fontSize: '0.55rem', color: '#222', marginTop: '5px', display: 'block' },
+    cardCat: { fontSize: '0.55rem', color: '#888', marginTop: '5px', display: 'block' },
     cardAmount: { fontSize: '1.1rem', fontFamily: 'monospace', marginRight: '30px' },
-    delBtn: { background: 'transparent', border: '1px solid #200', color: '#622', padding: '6px 12px', fontSize: '0.55rem', cursor: 'pointer', borderRadius: '4px' },
+    delBtn: { background: 'transparent', border: '1px solid #411', color: '#a44', padding: '6px 12px', fontSize: '0.55rem', cursor: 'pointer', borderRadius: '4px' },
     miniSelect: { background: '#000', color: '#fff', border: '1px solid #222', fontSize: '0.6rem', padding: '5px' }
 };
 
