@@ -51,3 +51,20 @@ CATEGORY CONTROLLER
 
 <img width="1919" height="962" alt="image" src="https://github.com/user-attachments/assets/701037a1-c5b9-4353-be18-393ce87b1c55" />
 
+
+
+
+
+
+
+Para poder usar:
+
+
+Subir el servidor dentro de la carpeta frontend comandos : 
+- npm install
+- npm run dev
+
+Activar el docker comandos :
+- docker compose down
+- docker compose up
+  
