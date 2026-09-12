@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strconv"
 	"time"
 
 	"expense-tracker/internal/middleware"
@@ -42,7 +43,11 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
-	user := models.User{Name: dto.Name, Email: dto.Email, Password: string(hash)}
+	sb := 0.0
+	if dto.StartingBalance != nil {
+		sb = *dto.StartingBalance
+	}
+	user := models.User{Name: dto.Name, Email: dto.Email, Password: string(hash), StartingBalance: sb}
 	if err := h.DB.Create(&user).Error; err != nil {
 		errResp(c, 500, "Server Error", err.Error())
 		return
@@ -68,7 +73,11 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
-	user := models.User{Name: dto.Name, Email: dto.Email, Password: string(hash)}
+	sb := 0.0
+	if dto.StartingBalance != nil {
+		sb = *dto.StartingBalance
+	}
+	user := models.User{Name: dto.Name, Email: dto.Email, Password: string(hash), StartingBalance: sb}
 	if err := h.DB.Create(&user).Error; err != nil {
 		if isDup(err) {
 			errResp(c, 409, "Duplicate Entry", "Email or username already exists")
@@ -89,7 +98,11 @@ func (h *Handler) CreateUsersBulk(c *gin.Context) {
 	var result []models.UserDto
 	for _, dto := range dtos {
 		hash, _ := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
-		u := models.User{Name: dto.Name, Email: dto.Email, Password: string(hash)}
+		sb := 0.0
+		if dto.StartingBalance != nil {
+			sb = *dto.StartingBalance
+		}
+		u := models.User{Name: dto.Name, Email: dto.Email, Password: string(hash), StartingBalance: sb}
 		if err := h.DB.Create(&u).Error; err != nil {
 			errResp(c, 409, "Duplicate Entry", err.Error())
 			return
@@ -136,6 +149,59 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	c.Status(200)
 }
 
+func (h *Handler) GetBalance(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		errResp(c, 400, "Invalid Request Data", "Invalid UUID")
+		return
+	}
+	var u models.User
+	if err := h.DB.First(&u, "id = ?", id).Error; err != nil {
+		errResp(c, 404, "Resource Not Found", "User not found")
+		return
+	}
+	var total float64
+	row := h.DB.Model(&models.Expense{}).Where("user_id = ?", id).Select("COALESCE(SUM(amount),0)").Row()
+	_ = row.Scan(&total)
+	c.JSON(200, models.BalanceDto{StartingBalance: u.StartingBalance, TotalSpent: total, CurrentBalance: u.StartingBalance - total})
+}
+
+func (h *Handler) UpdateBalance(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		errResp(c, 400, "Invalid Request Data", "Invalid UUID")
+		return
+	}
+	var dto models.UpdateBalanceDto
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		errResp(c, 400, "Invalid Request Data", err.Error())
+		return
+	}
+	var u models.User
+	if err := h.DB.First(&u, "id = ?", id).Error; err != nil {
+		errResp(c, 404, "Resource Not Found", "User not found")
+		return
+	}
+	u.StartingBalance = dto.StartingBalance
+	if err := h.DB.Save(&u).Error; err != nil {
+		errResp(c, 500, "Server Error", err.Error())
+		return
+	}
+	c.JSON(200, models.ToUserDto(u))
+}
+
+func (h *Handler) GetAuthMe(c *gin.Context) {
+	u, ok := middleware.CurrentUser(c)
+	if !ok {
+		errResp(c, 401, "Unauthorized", "No auth")
+		return
+	}
+	// re-fetch to get latest StartingBalance
+	var fresh models.User
+	h.DB.First(&fresh, "id = ?", u.ID)
+	c.JSON(200, models.ToUserDto(fresh))
+}
+
 // Categories
 
 func (h *Handler) CreateCategory(c *gin.Context) {
@@ -178,6 +244,12 @@ func (h *Handler) GetCategoryByID(c *gin.Context) {
 
 func (h *Handler) DeleteCategory(c *gin.Context) {
 	id, _ := uuid.Parse(c.Param("id"))
+	var count int64
+	h.DB.Model(&models.Expense{}).Where("category_id = ?", id).Count(&count)
+	if count > 0 {
+		errResp(c, 409, "Conflict", "Category in use by expenses")
+		return
+	}
 	h.DB.Delete(&models.Category{}, "id = ?", id)
 	c.Status(204)
 }
@@ -227,6 +299,9 @@ func (h *Handler) CreateExpense(c *gin.Context) {
 		return
 	}
 	exp := models.Expense{Amount: dto.Amount, Description: dto.Description, CategoryID: cat.ID, UserID: user.ID}
+	if dto.Date != nil {
+		exp.Date = *dto.Date
+	}
 	if err := h.DB.Create(&exp).Error; err != nil {
 		errResp(c, 500, "Server Error", err.Error())
 		return
@@ -260,6 +335,94 @@ func (h *Handler) DeleteExpense(c *gin.Context) {
 	h.DB.Delete(&models.Expense{}, "id = ?", id)
 	c.Status(204)
 }
+
+func (h *Handler) GetExpensesByUser(c *gin.Context) {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		errResp(c, 400, "Invalid Request Data", "Invalid UUID")
+		return
+	}
+	// optional filters
+	categoryIDStr := c.Query("categoryId")
+	fromStr := c.Query("from")
+	toStr := c.Query("to")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "50")
+	var categoryID *uuid.UUID
+	if categoryIDStr != "" {
+		if parsed, err := uuid.Parse(categoryIDStr); err == nil {
+			categoryID = &parsed
+		}
+	}
+	query := h.DB.Preload("Category").Preload("User").Where("user_id = ?", userID)
+	if categoryID != nil {
+		query = query.Where("category_id = ?", *categoryID)
+	}
+	if fromStr != "" {
+		if t, err := time.Parse(time.RFC3339, fromStr); err == nil {
+			query = query.Where("date >= ?", t)
+		} else if t, err := time.Parse("2006-01-02", fromStr); err == nil {
+			query = query.Where("date >= ?", t)
+		}
+	}
+	if toStr != "" {
+		if t, err := time.Parse(time.RFC3339, toStr); err == nil {
+			query = query.Where("date <= ?", t)
+		} else if t, err := time.Parse("2006-01-02", toStr); err == nil {
+			query = query.Where("date <= ?", t)
+		}
+	}
+	// pagination
+	page := 1
+	limit := 50
+	if v, err := strconv.Atoi(pageStr); err == nil && v > 0 {
+		page = v
+	}
+	if v, err := strconv.Atoi(limitStr); err == nil && v > 0 && v <= 100 {
+		limit = v
+	}
+	offset := (page - 1) * limit
+	var exps []models.Expense
+	query.Order("date DESC").Limit(limit).Offset(offset).Find(&exps)
+	dtos := make([]models.ExpenseDto, 0, len(exps))
+	for _, e := range exps {
+		dtos = append(dtos, models.ToExpenseDto(e))
+	}
+	c.JSON(200, dtos)
+}
+
+func (h *Handler) GetSummaryByCategory(c *gin.Context) {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		errResp(c, 400, "Invalid Request Data", "Invalid UUID")
+		return
+	}
+	type row struct {
+		ID   uuid.UUID `json:"id"`
+		Name string    `json:"name"`
+		Total float64  `json:"totalSpent"`
+		Count int64    `json:"count"`
+	}
+	var rows []row
+	// join categories left to show 0 for unused
+	h.DB.Raw(`
+		SELECT c.id, c.name, COALESCE(SUM(e.amount),0) as total, COUNT(e.id) as count
+		FROM categories c
+		LEFT JOIN expenses e ON e.category_id = c.id AND e.user_id = ?
+		GROUP BY c.id, c.name
+		ORDER BY total DESC
+	`, userID).Scan(&rows)
+	var result []models.CategorySummary
+	for _, r := range rows {
+		result = append(result, models.CategorySummary{ID: r.ID, Name: r.Name, TotalSpent: r.Total, Count: r.Count})
+	}
+	if result == nil {
+		result = []models.CategorySummary{}
+	}
+	c.JSON(200, result)
+}
+
+
 
 func isDup(err error) bool {
 	if err == nil {
