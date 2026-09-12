@@ -51,6 +51,7 @@ func main() {
 	{
 		auth.POST("/register", h.Register)
 		auth.POST("/login", middleware.BasicAuth(db), h.Login)
+		auth.GET("/me", middleware.BasicAuth(db), h.GetAuthMe)
 	}
 
 	// protected (BasicAuth)
@@ -63,6 +64,10 @@ func main() {
 		api.GET("/users", h.GetAllUsers)
 		api.GET("/users/:id", h.GetUserByID)
 		api.DELETE("/users/:id", h.DeleteUser)
+		api.GET("/users/:id/balance", h.GetBalance)
+		api.PUT("/users/:id/balance", h.UpdateBalance)
+		api.GET("/users/:id/expenses", h.GetExpensesByUser)
+		api.GET("/users/:id/summary/categories", h.GetSummaryByCategory)
 
 		// categories
 		api.POST("/categories", h.CreateCategory)
