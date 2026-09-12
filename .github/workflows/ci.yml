@@ -88,6 +88,18 @@ jobs:
           load: true
           tags: expense-tracker-frontend:ci
           cache-from: type=gha
+      - name: Create .env for CI (if missing)
+        run: |
+          if [ ! -f .env ]; then
+            cat > .env <<'EOF'
+          POSTGRES_DB=expense-tracker
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          DATABASE_URL=host=postgres user=postgres password=postgres dbname=expense-tracker port=5432 sslmode=disable TimeZone=UTC
+          PORT=8080
+          EOF
+            cat .env
+          fi
       - name: Smoke test compose
         run: |
           docker compose up -d --build
