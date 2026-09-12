@@ -4,12 +4,20 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
     plugins: [react()],
     build: {
-        outDir: '../src/main/resources/static',
+        outDir: 'dist',
         emptyOutDir: true,
     },
     server: {
+        host: true,
+        port: 5173,
         proxy: {
             '/api': 'http://localhost:8080'
         }
+    },
+    test: {
+        globals: true,
+        environment: 'jsdom',
+        setupFiles: './src/test/setup.js',
+        css: true,
     }
 })

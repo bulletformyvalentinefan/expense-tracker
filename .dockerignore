@@ -1,0 +1,13 @@
+.git
+.gitignore
+frontend/node_modules/
+frontend/dist/
+.idea/
+.vscode/
+*.log
+expense-tracker
+expense-tracker.exe
+coverage.out
+.github/
+Makefile
+README.md

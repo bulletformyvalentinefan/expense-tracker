@@ -59,12 +59,38 @@ CATEGORY CONTROLLER
 
 Para poder usar:
 
+### Stack
+- Backend: **Go 1.23** + Gin + GORM + PostgreSQL (imagen ~41 MB, RAM ~7 MB)
+- Frontend: React 19 + Vite 7 + pnpm 11 (imagen nginx 102 MB)
+- DB: postgres:16
 
-Subir el servidor dentro de la carpeta frontend comandos : 
-- npm install
-- npm run dev
+### Opción A — Todo con Docker (recomendado)
+```bash
+docker compose up --build
+```
+- Frontend: http://localhost:5173 (nginx proxy /api → backend)
+- Backend: http://localhost:8080 (GET /health)
+- Postgres: localhost:5532
 
-Activar el docker comandos :
-- docker compose down
-- docker compose up
+### Opción B — Desarrollo local
+```bash
+# Terminal 1 - DB
+docker compose up postgres -d
+
+# Terminal 2 - Backend Go
+go run ./cmd/server  # http://localhost:8080, lee DATABASE_URL o docker postgres
+
+# Con env explícito:
+DATABASE_URL="host=localhost user=postgres password=${POSTGRES_PASSWORD} dbname=expense-tracker port=5532 sslmode=disable" go run ./cmd/server
+
+# Terminal 3 - Frontend
+cd frontend
+pnpm install
+pnpm dev  # http://localhost:5173 proxy /api -> 8080
+```
+
+Comandos útiles:
+- `docker compose down` / `docker compose down -v` (borra volumen DB)
+- `docker compose logs -f backend` / `docker compose logs -f frontend`
+- `docker stats --no-stream` (consumo: backend ~7 MB vs Spring ~304 MB)
   
