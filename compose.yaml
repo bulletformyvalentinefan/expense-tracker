@@ -3,16 +3,18 @@ services:
     image: postgres:16
     container_name: expense-tracker-db
     restart: always
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: expense-tracker
-      POSTGRES_USER: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5532:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d expense-tracker"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -25,12 +27,10 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: "host=postgres user=postgres password=${POSTGRES_PASSWORD} dbname=expense-tracker port=5432 sslmode=disable TimeZone=UTC"
-      # legacy fallback
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/expense-tracker
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       postgres:
         condition: service_healthy

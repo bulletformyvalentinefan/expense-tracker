@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"expense-tracker/internal/config"
 	"expense-tracker/internal/handlers"
@@ -17,7 +18,7 @@ import (
 
 func main() {
 	cfg := config.Load()
-	log.Printf("Connecting to DB: %s", cfg.DatabaseDSN)
+	log.Printf("Connecting to DB: host=%s dbname=%s (password masked)", envOrMasked("DB_HOST", "POSTGRES_HOST"), envOrMasked("DB_NAME", "POSTGRES_DB"))
 
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseDSN), &gorm.Config{})
 	if err != nil {
@@ -83,4 +84,13 @@ func main() {
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
+}
+
+func envOrMasked(keys ...string) string {
+	for _, k := range keys {
+		if v := os.Getenv(k); v != "" {
+			return v
+		}
+	}
+	return "unknown"
 }

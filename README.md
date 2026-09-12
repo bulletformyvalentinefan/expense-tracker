@@ -74,14 +74,13 @@ docker compose up --build
 
 ### Opción B — Desarrollo local
 ```bash
-# Terminal 1 - DB
+# Terminal 1 - DB (usa .env)
 docker compose up postgres -d
 
-# Terminal 2 - Backend Go
-go run ./cmd/server  # http://localhost:8080, lee DATABASE_URL o docker postgres
-
-# Con env explícito:
-DATABASE_URL="host=localhost user=postgres password=${POSTGRES_PASSWORD} dbname=expense-tracker port=5532 sslmode=disable" go run ./cmd/server
+# Terminal 2 - Backend Go (lee .env automáticamente vía compose, local requiere export)
+# crea .env en la raíz con POSTGRES_* y DATABASE_URL (no se commitea)
+go run ./cmd/server  # http://localhost:8080, lee .env / DATABASE_URL
+```
 
 # Terminal 3 - Frontend
 cd frontend

@@ -7,6 +7,14 @@ coverage.out
 *.test
 *.out
 
+### Secrets ###
+.env
+.env.*
+!.env.example
+application-local.properties
+*.pem
+*.key
+
 ### Frontend pnpm / Vite ###
 frontend/node_modules/
 frontend/dist/
