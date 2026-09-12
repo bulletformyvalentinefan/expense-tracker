@@ -7,6 +7,7 @@ function App() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [name, setName] = useState('')
+    const [startingBalance, setStartingBalance] = useState('')
     const [isRegistering, setIsRegistering] = useState(false)
     const [isLoggedIn, setIsLoggedIn] = useState(false)
     const [userData, setUserData] = useState(null)
@@ -21,6 +22,10 @@ function App() {
         e.preventDefault();
         try {
             const newUser = { name, email, password };
+            if (startingBalance !== '') {
+                const v = parseFloat(startingBalance);
+                if (!isNaN(v) && v >= 0) newUser.startingBalance = v;
+            }
             await axios.post('/api/auth/register', newUser);
             alert("Account created successfully. Please log in.");
             setIsRegistering(false);
@@ -60,13 +65,23 @@ function App() {
                 <h1 className="logo-title">EXPENSE.TRACKER</h1>
 
                 {isRegistering && (
-                    <input
-                        type="text"
-                        placeholder="NAME"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                    />
+                    <>
+                        <input
+                            type="text"
+                            placeholder="NAME"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                        />
+                        <input
+                            type="number"
+                            placeholder="SALDO INICIAL (opcional, ej 1000)"
+                            value={startingBalance}
+                            onChange={(e) => setStartingBalance(e.target.value)}
+                            min="0"
+                            step="0.01"
+                        />
+                    </>
                 )}
 
                 <input
