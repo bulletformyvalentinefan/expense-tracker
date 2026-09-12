@@ -1,7 +1,11 @@
-import { useState } from 'react'
-import axios from 'axios'
-import Dashboard from './Dashboard'
+import { useState, lazy, Suspense } from 'react'
 import './App.css'
+const Dashboard = lazy(() => import('./Dashboard'))
+
+function getAuthHeader() {
+    const token = localStorage.getItem('auth')
+    return token ? `Basic ${token}` : null
+}
 
 function App() {
     const [email, setEmail] = useState('')
@@ -9,55 +13,74 @@ function App() {
     const [name, setName] = useState('')
     const [startingBalance, setStartingBalance] = useState('')
     const [isRegistering, setIsRegistering] = useState(false)
-    const [isLoggedIn, setIsLoggedIn] = useState(false)
-    const [userData, setUserData] = useState(null)
+    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('auth'))
+    const [userData, setUserData] = useState(() => {
+        const saved = localStorage.getItem('user')
+        return saved ? JSON.parse(saved) : null
+    })
 
     const handleLogout = () => {
-        setUserData(null);
-        setIsLoggedIn(false);
-        axios.defaults.auth = null;
+        localStorage.removeItem('auth')
+        localStorage.removeItem('user')
+        setUserData(null)
+        setIsLoggedIn(false)
     }
 
     const handleRegister = async (e) => {
-        e.preventDefault();
+        e.preventDefault()
         try {
-            const newUser = { name, email, password };
+            const newUser = { name, email, password }
             if (startingBalance !== '') {
-                const v = parseFloat(startingBalance);
-                if (!isNaN(v) && v >= 0) newUser.startingBalance = v;
+                const v = parseFloat(startingBalance)
+                if (!isNaN(v) && v >= 0) newUser.startingBalance = v
             }
-            await axios.post('/api/auth/register', newUser);
-            alert("Account created successfully. Please log in.");
-            setIsRegistering(false);
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newUser),
+            })
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(err.message || err.error || 'Could not create account')
+            }
+            alert('Account created successfully. Please log in.')
+            setIsRegistering(false)
         } catch (error) {
-            const msg = error.response?.data?.message || error.response?.data?.error || "Could not create account";
-            console.error("Registration error:", error);
-            alert(msg);
+            alert(error.message || 'Could not create account')
         }
     }
 
     const handleLogin = async (e) => {
-        e.preventDefault();
+        e.preventDefault()
         try {
-            const authConfig = {
-                auth: {
-                    username: email,
-                    password: password
-                }
-            };
-
-            const response = await axios.post('/api/auth/login', {}, authConfig);
-            axios.defaults.auth = authConfig.auth;
-            setUserData(response.data);
-            setIsLoggedIn(true);
+            const token = btoa(`${email}:${password}`)
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { Authorization: `Basic ${token}` },
+            })
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(err.message || err.error || 'Invalid credentials')
+            }
+            const data = await res.json()
+            localStorage.setItem('auth', token)
+            localStorage.setItem('user', JSON.stringify(data))
+            setUserData(data)
+            setIsLoggedIn(true)
         } catch (error) {
-            const msg = error.response?.data?.message || error.response?.data?.error || "Invalid credentials or connection error";
-            console.error("Login error:", error);
-            alert(msg);
+            alert(error.message || 'Invalid credentials or connection error')
         }
     }
 
-    if (isLoggedIn) return <Dashboard user={userData} onLogout={handleLogout} />;
+    // restore session on reload: if has auth but no userData, fetch me
+    if (isLoggedIn && !userData) {
+        fetch('/api/auth/me', { headers: { Authorization: getAuthHeader() } })
+            .then(r => r.ok ? r.json() : null)
+            .then(u => { if (u) setUserData(u); else handleLogout() })
+            .catch(() => handleLogout())
+    }
+
+    if (isLoggedIn && userData) return <Suspense fallback={<div className="auth-container"><p style={{ color: '#fff' }}>LOADING...</p></div>}><Dashboard user={userData} onLogout={handleLogout} /></Suspense>
 
     return (
         <div className="auth-container">
@@ -66,39 +89,13 @@ function App() {
 
                 {isRegistering && (
                     <>
-                        <input
-                            type="text"
-                            placeholder="NAME"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
-                        <input
-                            type="number"
-                            placeholder="SALDO INICIAL (opcional, ej 1000)"
-                            value={startingBalance}
-                            onChange={(e) => setStartingBalance(e.target.value)}
-                            min="0"
-                            step="0.01"
-                        />
+                        <input type="text" placeholder="NAME" value={name} onChange={(e) => setName(e.target.value)} required />
+                        <input type="number" placeholder="SALDO INICIAL (opcional, ej 1000)" value={startingBalance} onChange={(e) => setStartingBalance(e.target.value)} min="0" step="0.01" />
                     </>
                 )}
 
-                <input
-                    type="email"
-                    placeholder="EMAIL"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                />
-
-                <input
-                    type="password"
-                    placeholder="PASSWORD"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
+                <input type="email" placeholder="EMAIL" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <input type="password" placeholder="PASSWORD" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
                 <button type="submit">{isRegistering ? 'CREATE ACCOUNT' : 'ENTER'}</button>
 

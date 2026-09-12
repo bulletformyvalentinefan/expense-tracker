@@ -3,18 +3,29 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 
-// Mock axios
-vi.mock('axios', () => ({
-  default: {
-    get: vi.fn().mockResolvedValue({ data: [] }),
-    post: vi.fn().mockResolvedValue({ data: { id: '1', name: 'bob', email: 'bob@test.com' } }),
-    defaults: { auth: null },
-  },
-}))
-
 describe('App auth flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    vi.stubGlobal('fetch', vi.fn((url, _opts) => {
+      const u = String(url)
+      if (u.includes('/api/auth/login')) {
+        return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: () => Promise.resolve({ id: '1', name: 'bob', email: 'bob@test.com', startingBalance: 0 }) })
+      }
+      if (u.includes('/api/auth/register')) {
+        return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}) })
+      }
+      if (u.includes('/balance')) {
+        return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: () => Promise.resolve({ startingBalance: 0, totalSpent: 0, currentBalance: 0 }) })
+      }
+      if (u.includes('/summary/categories')) {
+        return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: () => Promise.resolve([]) })
+      }
+      if (u.includes('/api/categories') || u.includes('/api/expenses') || u.includes('/api/users')) {
+        return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: () => Promise.resolve([]) })
+      }
+      return Promise.resolve({ ok: true, headers: { get: () => 'application/json' }, json: () => Promise.resolve([]) })
+    }))
   })
 
   it('renders login form when not authenticated', async () => {
