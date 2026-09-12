@@ -25,8 +25,9 @@ function App() {
             alert("Account created successfully. Please log in.");
             setIsRegistering(false);
         } catch (error) {
+            const msg = error.response?.data?.message || error.response?.data?.error || "Could not create account";
             console.error("Registration error:", error);
-            alert("Could not create account");
+            alert(msg);
         }
     }
 
@@ -45,8 +46,9 @@ function App() {
             setUserData(response.data);
             setIsLoggedIn(true);
         } catch (error) {
+            const msg = error.response?.data?.message || error.response?.data?.error || "Invalid credentials or connection error";
             console.error("Login error:", error);
-            alert("Invalid credentials or connection error");
+            alert(msg);
         }
     }
 

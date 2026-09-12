@@ -9,6 +9,8 @@ const Dashboard = ({ user, onLogout }) => {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [categoryId, setCategoryId] = useState('');
+    const [newCatName, setNewCatName] = useState('');
+    const [newCatDesc, setNewCatDesc] = useState('');
     const [popup, setPopup] = useState({ show: false, message: '', type: 'info' });
 
     const notify = (msg, type = 'info') => {
@@ -28,25 +30,44 @@ const Dashboard = ({ user, onLogout }) => {
             setUsersList(userRes.data);
             notify("DB_SYNC_COMPLETE", "success");
         } catch (error) {
-            notify("CONNECTION_ERROR", "error");
+            const msg = error.response?.data?.message || error.response?.data?.error || "CONNECTION_ERROR";
+            notify(msg, "error");
         }
     };
 
     useEffect(() => { fetchData(); }, []);
 
+    const handleCreateCategory = async (e) => {
+        e.preventDefault();
+        if (!newCatName.trim()) { notify("CATEGORY_NAME_REQUIRED", "error"); return; }
+        try {
+            await axios.post('/api/categories', { name: newCatName.trim(), description: newCatDesc.trim() || null });
+            setNewCatName(''); setNewCatDesc('');
+            notify("CATEGORY_CREATED", "success");
+            fetchData();
+        } catch (error) {
+            const msg = error.response?.data?.message || "SAVE_FAILED";
+            notify(msg, "error");
+        }
+    };
+
     const handleCreateExpense = async (e) => {
         e.preventDefault();
+        if (categories.length === 0) { notify("CREATE_CATEGORY_FIRST", "error"); return; }
+        const parsed = parseFloat(amount);
+        if (isNaN(parsed) || parsed <= 0) { notify("INVALID_AMOUNT", "error"); return; }
         try {
             await axios.post(`/api/expenses/${user.id}`, {
                 description,
-                amount: parseFloat(amount),
+                amount: parsed,
                 categoryId: categoryId
             });
             setDescription(''); setAmount(''); setCategoryId('');
             notify("ENTRY_CREATED", "success");
             fetchData();
         } catch (error) {
-            notify("SAVE_FAILED", "error");
+            const msg = error.response?.data?.message || "SAVE_FAILED";
+            notify(msg, "error");
         }
     };
 
@@ -56,7 +77,8 @@ const Dashboard = ({ user, onLogout }) => {
             notify("DATA_DELETED", "success");
             fetchData();
         } catch (error) {
-            notify("DELETE_ERROR", "error");
+            const msg = error.response?.data?.message || "DELETE_ERROR";
+            notify(msg, "error");
         }
     };
 
@@ -75,7 +97,7 @@ const Dashboard = ({ user, onLogout }) => {
     };
 
     const filteredExpenses = filterCategory
-        ? expenses.filter(e => e.categoryId === filterCategory)
+        ? expenses.filter(e => (e.category?.id || e.categoryId) === filterCategory)
         : expenses;
 
     return (
@@ -114,6 +136,15 @@ const Dashboard = ({ user, onLogout }) => {
                 </section>
 
                 <section style={styles.actionPanel}>
+                    <div style={{ marginBottom: '30px', padding: '20px', border: '1px dashed #333', borderRadius: '8px' }}>
+                        <p style={styles.fieldLabel}>CREATE_CATEGORY</p>
+                        <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                            <input placeholder="CATEGORY_NAME" value={newCatName} onChange={e => setNewCatName(e.target.value)} required style={{ ...styles.darkInput, flex: 1 }} />
+                            <input placeholder="DESCRIPTION (optional)" value={newCatDesc} onChange={e => setNewCatDesc(e.target.value)} style={{ ...styles.darkInput, flex: 1 }} />
+                            <button type="submit" style={{ ...styles.addBtn, height: '38px', padding: '0 20px' }}>ADD_CATEGORY</button>
+                        </form>
+                        {categories.length === 0 && <p style={{ ...styles.fieldLabel, color: '#ff4d4d', marginTop: '10px' }}>NO_CATEGORIES_DETECTED — CREATE ONE FIRST</p>}
+                    </div>
                     <form onSubmit={handleCreateExpense} style={styles.form}>
                         <div style={styles.inputGroup}>
                             <label style={styles.fieldLabel}>DESCRIPTION</label>
@@ -143,7 +174,7 @@ const Dashboard = ({ user, onLogout }) => {
                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>)}
                             </select>
                         </div>
-                        <button type="submit" style={styles.addBtn}>CREATE_ENTRY</button>
+                        <button type="submit" disabled={categories.length === 0} title={categories.length === 0 ? "Create a category first" : ""} style={{ ...styles.addBtn, opacity: categories.length === 0 ? 0.4 : 1, cursor: categories.length === 0 ? 'not-allowed' : 'pointer' }}>CREATE_ENTRY</button>
                     </form>
                 </section>
 
@@ -169,7 +200,7 @@ const Dashboard = ({ user, onLogout }) => {
                         <div key={expense.id} style={styles.expenseCard}>
                             <div style={styles.cardInfo}>
                                 <h3 style={styles.cardDesc}>{expense.description.toUpperCase()}</h3>
-                                <span style={styles.cardCat}>TYPE::{expense.categoryName?.toUpperCase()}</span>
+                                <span style={styles.cardCat}>TYPE::{ (expense.category?.name || expense.categoryName)?.toUpperCase() }</span>
                             </div>
                             <div style={styles.cardAction}>
                                 <span style={styles.cardAmount}>-{expense.amount.toFixed(2)}</span>
