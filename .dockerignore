@@ -1,7 +1,5 @@
 .git
 .gitignore
-frontend/node_modules/
-frontend/dist/
 .idea/
 .vscode/
 *.log
@@ -11,3 +9,7 @@ coverage.out
 .github/
 Makefile
 README.md
+.env
+.env.*
+!frontend/.dockerignore
+compose.override.yaml

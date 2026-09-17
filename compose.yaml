@@ -21,11 +21,10 @@ services:
       retries: 10
 
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/bulletformyvalentinefan/expense-tracker-backend:latest
     container_name: expense-tracker-backend
     restart: always
+    pull_policy: always
     ports:
       - "8080:8080"
     env_file:
@@ -41,11 +40,10 @@ services:
         condition: service_healthy
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/bulletformyvalentinefan/expense-tracker-frontend:latest
     container_name: expense-tracker-frontend
     restart: always
+    pull_policy: always
     ports:
       - "5173:80"
     depends_on:

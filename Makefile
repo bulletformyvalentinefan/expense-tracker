@@ -1,11 +1,12 @@
-.PHONY: test lint build docker ci clean
+.PHONY: test lint build dev up deploy down e2e clean
 
-# Backend Go 1.26 + sqlite (no cgo)
+# Go tests (no Docker)
 test:
 	go vet ./...
 	go test ./... -count=1 -coverprofile=coverage.out
 	go tool cover -func=coverage.out | tail -10
 
+# Go vet + pnpm lint
 lint:
 	go vet ./...
 	cd frontend && pnpm run lint
@@ -16,6 +17,7 @@ frontend-test:
 frontend-build:
 	cd frontend && pnpm run build
 
+# Build images locally (manual, not used by compose)
 build:
 	docker build -t expense-tracker-backend:local .
 	docker build -t expense-tracker-frontend:local -f frontend/Dockerfile frontend
@@ -27,9 +29,21 @@ docker-test:
 ci: test lint frontend-test frontend-build docker-test
 	@echo "CI local passed"
 
-up:
+# Dev: compila local con compose.override.yaml
+dev:
 	docker compose up --build -d
 	docker compose ps
+
+# Prod: pull de GHCR, sin compilar (Debian server)
+up:
+	docker compose pull
+	docker compose up -d
+	docker compose ps
+
+# Push a main → CI → GHCR
+deploy:
+	git push origin main
+	@echo "Pushed. CI will build and push to GHCR."
 
 down:
 	docker compose down
@@ -45,4 +59,3 @@ e2e:
 clean:
 	docker builder prune -f
 	docker system df
-
