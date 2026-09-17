@@ -102,15 +102,15 @@ jobs:
           fi
       - name: Smoke test compose
         run: |
-          docker compose up -d --build
+          docker compose -f compose.yaml -f compose.build.yaml up -d --build
           for i in 1 2 3 4 5 6; do
             if curl -sf http://localhost:8080/health | grep -q ok; then echo "backend healthy"; break; fi
             echo "waiting backend $i..."; sleep 5
           done
           curl -sf http://localhost:8080/health
           curl -sf http://localhost:5173/ | head -20
-          docker compose ps
-          docker compose down
+          docker compose -f compose.yaml -f compose.build.yaml ps
+          docker compose -f compose.yaml -f compose.build.yaml down
 
   ghcr:
     name: push to GHCR (main only)

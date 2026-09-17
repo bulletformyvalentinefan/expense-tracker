@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: expense-tracker-backend:ci
+    pull_policy: missing
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: expense-tracker-frontend:ci
+    pull_policy: missing
+    ports:
+      - "5173:80"
+
+  postgres:
+    ports:
+      - "5532:5432"

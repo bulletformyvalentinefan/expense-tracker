@@ -29,10 +29,10 @@ docker-test:
 ci: test lint frontend-test frontend-build docker-test
 	@echo "CI local passed"
 
-# Dev: compila local con compose.override.yaml
+# Dev: compila local con compose.build.yaml
 dev:
-	docker compose up --build -d
-	docker compose ps
+	docker compose -f compose.yaml -f compose.build.yaml up --build -d
+	docker compose -f compose.yaml -f compose.build.yaml ps
 
 # Prod: pull de GHCR, sin compilar (Debian server)
 up:
@@ -49,12 +49,12 @@ down:
 	docker compose down
 
 e2e:
-	docker compose up -d --build
+	docker compose -f compose.yaml -f compose.build.yaml up -d --build
 	@echo "waiting health..."
 	@for i in 1 2 3 4 5 6; do curl -sf http://localhost:8080/health | grep -q ok && echo "backend healthy" && break || (echo "wait $$i"; sleep 5); done
 	curl -sf http://localhost:5173/ | head -20
-	docker compose ps
-	docker compose down
+	docker compose -f compose.yaml -f compose.build.yaml ps
+	docker compose -f compose.yaml -f compose.build.yaml down
 
 clean:
 	docker builder prune -f
