@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5532:5432"
+      - "${POSTGRES_PORT:-3120}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
     restart: always
     pull_policy: always
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-3110}:8080"
     env_file:
       - path: .env
         required: false
@@ -45,7 +45,7 @@ services:
     restart: always
     pull_policy: always
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-3100}:80"
     depends_on:
       backend:
         condition: service_healthy
