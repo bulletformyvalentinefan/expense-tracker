@@ -4,8 +4,7 @@ services:
     container_name: expense-tracker-db
     restart: always
     env_file:
-      - path: .env
-        required: false
+      - .env
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-expense-tracker}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -28,8 +27,7 @@ services:
     ports:
       - "${BACKEND_PORT:-3110}:8080"
     env_file:
-      - path: .env
-        required: false
+      - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-host=postgres user=postgres password=postgres dbname=expense-tracker port=5432 sslmode=disable TimeZone=UTC}
       POSTGRES_DB: ${POSTGRES_DB:-expense-tracker}
@@ -38,6 +36,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     image: ghcr.io/bulletformyvalentinefan/expense-tracker-frontend:latest
